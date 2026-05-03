@@ -11,19 +11,20 @@ jobs:
     outputs:
       instance_ip: ${{ steps.apply.outputs.ip }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v2
+      - uses: actions/checkout@v4 # Version plus récente
+      - uses: hashicorp/setup-terraform@v3 # Version plus récente
       - name: Terraform Init & Apply
         id: apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION: "us-east-1"
         run: |
           cd terraform
           terraform init
           terraform apply -auto-approve
           echo "ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
 
   job2_config:
     name: "Installation des packages"
