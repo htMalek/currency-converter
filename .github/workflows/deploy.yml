@@ -1,0 +1,43 @@
+name: Deploy App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  job1:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: cd terraform && terraform init
+
+      - name: Terraform Apply
+        run: cd terraform && terraform apply -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+
+  job2:
+    name: Setup App
+    runs-on: ubuntu-latest
+    needs: job1
+
+    steps:
+      - run: echo "Packages installés via user_data"
+
+  job3:
+    name: Deploy App
+    runs-on: ubuntu-latest
+    needs: job2
+
+    steps:
+      - run: echo "App déployée automatiquement"
