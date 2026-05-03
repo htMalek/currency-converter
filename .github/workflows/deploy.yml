@@ -1,5 +1,4 @@
 name: Deploy App
-
 on:
   push:
     branches:
@@ -9,35 +8,67 @@ jobs:
   job1:
     name: Terraform Apply
     runs-on: ubuntu-latest
-
+    outputs:
+      instance_ip: ${{ steps.set-ip.outputs.instance_ip }}
     steps:
       - uses: actions/checkout@v3
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-
       - name: Terraform Init
         run: cd terraform && terraform init
-
       - name: Terraform Apply
-        run: cd terraform && terraform apply -auto-approve
+        id: apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve
+          echo "ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.ASIAQX7FQTY5C7HAX2SP }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.rBh0i9dKczOZEgRnOp6g9wse6CKkAInpKKT5qPop }}
+          AWS_SESSION_TOKEN: ${{ secrets.IQoJb3JpZ2luX2VjEI7//////////wEaCXVzLXdlc3QtMiJGMEQCICuwKW/3dk7LZMpVA9lNwSOIOl/e7z8PuKBcdu82E15sAiAW+H+DWlKMCUEDGS4/Y+nEfIfGJODODYqi+9dvkX+RciqxAghXEAAaDDA1MTQ4NDA3MzUzMCIMItYlet/uuJVCMapzKo4CH2g5ofsHt3qNaSHD/ki4ToSlfr884RnO9z4iF8AAEF0m1L8H6KtfmSiewaFB4t8gJtQuoPhi+fF5nzqxs25KummkXIRWJkP0ej5LWiM32ORzZJGQ3tQV84HnW+GJu+HoAI1xUadTBOlAao0+WYid9FVWNd+zKpXo/7CTVQxJT82KZT4Zo3CK+IiBnI+ICIfnIZ6lgBaOaEBHBMXjvxAnVTfv+bWx0UO3uNVNfxEK8LtGOpnYiVOGIeaY6IVsAyZ3k4eUxfO/6vaIBfhtiz4V0Gl8U4lnmAglTPpHcoBwADn8jvnTh9OxRyE9TUpTXPxmSxz9ksPXV/Okzsf035WdTpvKm1tWrBbZYerW2EDHMN2f3c8GOp4BJNiTGCoEjjjRdZnF4VRPrmpChSUoFc3wEVPtp6Q12lcNNquTSQtr45xuMKNY3j/6Qi9JUJOT+znLe3anNbzvw7NWdxTRG7jNGfjnd3U3hhbq9vVDD4zhkXWGCxquCPdWUZg3S0csfjwlc/jez/+5GCPN11y89c1erJqGuvvvXNPf+SwKbFRUv4+NALUscmk3FmaqVbqiQfKsPoqkF90= }}
+      - id: set-ip
+        run: echo "instance_ip=${{ steps.apply.outputs.ip }}" >> $GITHUB_OUTPUT
 
   job2:
-    name: Setup App
+    name: Install Prerequisites
     runs-on: ubuntu-latest
     needs: job1
-
     steps:
-      - run: echo "Packages installés via user_data"
+      - uses: actions/checkout@v3
+      - name: Setup SSH and Install Packages
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ needs.job1.outputs.instance_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo apt-get update -y
+            sudo apt-get install -y nodejs npm nginx
+            sudo npm install -g pm2
 
   job3:
-    name: Deploy App
+    name: Delivery & Production
     runs-on: ubuntu-latest
-    needs: job2
-
+    needs: [job1, job2]
     steps:
-      - run: echo "App déployée automatiquement"
+      - uses: actions/checkout@v3
+      - name: Deploy Frontend and Backend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ needs.job1.outputs.instance_ip }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Clone ou mise à jour du code (simplifié pour l'exercice)
+            mkdir -p ~/app
+            # Ici on simule le transfert ou le pull
+            # Lancement Backend
+            cd ~/app/backend && npm install
+            pm2 stop all || true
+            pm2 start server.js --name "api"
+            # Build Frontend
+            cd ~/app/frontend && npm install && npm run build
+            sudo cp -r dist/* /var/www/html/
+
+      - name: Final URL
+        run: echo "L'application est prête ici : http://${{ needs.job1.outputs.instance_ip }}"
