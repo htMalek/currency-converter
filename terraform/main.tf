@@ -4,7 +4,7 @@ provider "aws" {
 
 # Groupe de sécurité avec nom unique pour éviter les conflits
 resource "aws_security_group" "almalek_final_sg" {
-  name        = "almalek-final-sg-2026"
+  name        = "almalek-final-sg-v2"
   description = "Allow SSH and Web"
 
   ingress {
