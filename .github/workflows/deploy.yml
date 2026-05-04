@@ -1,18 +1,22 @@
-name: Deploy App
+name: Deploy Final
 on:
   push:
     branches:
       - main
 
 jobs:
-  job1_terraform:
-    name: "Provisionnement AWS"
+  deploy:
+    name: "Déploiement Almalek"
     runs-on: ubuntu-latest
-    outputs:
-      instance_ip: ${{ steps.apply.outputs.ip }}
     steps:
-      - uses: actions/checkout@v4 # Version plus récente
-      - uses: hashicorp/setup-terraform@v3 # Version plus récente
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
       - name: Terraform Init & Apply
         id: apply
         env:
@@ -24,20 +28,4 @@ jobs:
           cd terraform
           terraform init
           terraform apply -auto-approve
-          echo "ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
-
-  job2_config:
-    name: "Installation des packages"
-    needs: job1_terraform
-    runs-on: ubuntu-latest
-    steps:
-      - name: SSH Connection and Install
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ needs.job1_terraform.outputs.instance_ip }}
-          username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            sudo apt-get update -y
-            sudo apt-get install -y nodejs npm nginx
-            sudo npm install -g pm2
+          echo "L'application est en cours d'installation sur : http://$(terraform output -raw instance_ip)"
